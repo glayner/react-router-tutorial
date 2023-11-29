@@ -1,29 +1,45 @@
 /* eslint-disable react-refresh/only-export-components */
+import { useEffect } from "react";
 import {
   Form,
+  NavLink,
   Outlet,
   redirect,
   useLoaderData,
-  NavLink,
-  useNavigation
+  useNavigation,
+  useSubmit
 } from "react-router-dom";
 import { createContact, getContacts } from "../contacts";
 
 export async function action() {
   const contact = await createContact();
-
   return redirect(`/contacts/${contact.id}/edit`);
 }
 
-export async function loader() {
-  const contacts = await getContacts();
-  return { contacts };
+export async function loader({ request }) {
+  const url = new URL(request.url)
+  const q = url.searchParams.get('q')
+  const contacts = await getContacts(q);
+  console.log('loader root')
+  return { contacts, q };
 }
 
 export default function Root() {
-  const { contacts } = useLoaderData();
-  
-  const navigation = useNavigation()
+  console.log('root mount')
+  const { contacts, q } = useLoaderData();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+
+  const searching =
+    navigation.location &&
+    new URLSearchParams(navigation.location.search).has(
+      "q"
+    );
+
+  useEffect(() => {
+    document.getElementById("q").value = q;
+  }, [q]);
+
   return (
     <>
       <div id="sidebar">
@@ -36,8 +52,17 @@ export default function Root() {
               placeholder="Search"
               type="search"
               name="q"
+              defaultValue={q}
+              className={searching ? "loading" : ""}
+              onChange={(event) => {
+                const isFirstSearch = q == null;
+                console.log({ isFirstSearch })
+                submit(event.currentTarget.form, {
+                  replace: !isFirstSearch,
+                });
+              }}
             />
-            <div id="search-spinner" aria-hidden hidden={true} />
+            <div id="search-spinner" aria-hidden hidden={!searching} />
             <div className="sr-only" aria-live="polite"></div>
           </Form>
           <Form method="post">
@@ -73,7 +98,7 @@ export default function Root() {
         </nav>
       </div >
       <div id="detail"
-      className={navigation.state === 'loading' ? 'loading' : ''}
+        className={navigation.state === 'loading' ? 'loading' : ''}
       >
         <Outlet />
       </div>

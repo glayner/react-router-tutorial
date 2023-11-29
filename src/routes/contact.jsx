@@ -1,10 +1,24 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable react/prop-types */
-import { Form, useLoaderData } from "react-router-dom";
-import { getContact } from "../contacts";
+import { Form, useFetcher, useLoaderData } from "react-router-dom";
+import { getContact, updateContact } from "../contacts";
+
+export async function action({ request, params }) {
+  let formData = await request.formData();
+  return updateContact(params.contactId, {
+    favorite: formData.get("favorite") === "true",
+  });
+}
 
 export async function loader({ params }) {
+  console.log('loader contact')
   const contact = await getContact(params.contactId);
+  if (!contact) {
+    throw new Response("", {
+      status: 404,
+      statusText: "Not Found",
+    });
+  }
   return { contact };
 }
 
@@ -65,10 +79,14 @@ export default function Contact() {
 }
 
 function Favorite({ contact }) {
+  const { Form: FormFetcher, formData } = useFetcher();
   // yes, this is a `let` for later
   let favorite = contact.favorite;
+  if (formData) {
+    favorite = formData.get('favorite') === 'true'
+  }
   return (
-    <Form method="post">
+    <FormFetcher method="post">
       <button
         name="favorite"
         value={favorite ? "false" : "true"}
@@ -76,6 +94,6 @@ function Favorite({ contact }) {
       >
         {favorite ? "★" : "☆"}
       </button>
-    </Form>
+    </FormFetcher>
   );
 }
